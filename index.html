@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ServTec OS - Gestión Profesional de Servicio Técnico</title>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-box">
+                    <i class="fa-solid fa-microchip logo-icon"></i>
+                </div>
+                <div class="logo-text">
+                    <h2>ServTec<span>OS</span></h2>
+                    <span class="version-tag">Servicio Técnico Profesional</span>
+                </div>
+            </div>
+
+            <!-- Terminal Role Selector in Sidebar -->
+            <div class="role-selector-box">
+                <label><i class="fa-solid fa-display"></i> Modo de Terminal:</label>
+                <select id="terminal-role-select" class="form-control role-select" onchange="changeTerminalRole(this.value)">
+                    <option value="admin">👑 Terminal General / Admin</option>
+                    <option value="reception">🌐 Terminal Recepción / Caja</option>
+                    <option value="tech">🔧 Terminal Taller / Técnico</option>
+                </select>
+                <small class="role-hint" id="role-hint-text">Acceso completo a todos los módulos</small>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">NAVEGACIÓN</div>
+                <button class="nav-item active" data-tab="dashboard" id="nav-btn-dashboard">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Dashboard KPIs</span>
+                </button>
+                <button class="nav-item" data-tab="orders" id="nav-btn-orders">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>Órdenes de Servicio</span>
+                    <span class="badge badge-orders" id="badge-total-orders">0</span>
+                </button>
+                <button class="nav-item" data-tab="inventory" id="nav-btn-inventory">
+                    <i class="fa-solid fa-boxes-packing"></i>
+                    <span>Inventario & Stock</span>
+                    <span class="badge badge-warning" id="badge-low-stock">0</span>
+                </button>
+                <button class="nav-item" data-tab="pos" id="nav-btn-pos">
+                    <i class="fa-solid fa-cash-register"></i>
+                    <span>Venta Rápida POS</span>
+                </button>
+                <button class="nav-item" data-tab="finances" id="nav-btn-finances">
+                    <i class="fa-solid fa-wallet"></i>
+                    <span>Finanzas & Caja</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sync-status-indicator" id="sync-status" onclick="openQrConnectModal()" style="cursor:pointer;" title="Haz clic para conectar tu celular">
+                    <span class="sync-dot"></span>
+                    <div>
+                        <strong id="sync-status-title">Multidispositivo Activo</strong>
+                        <small id="sync-status-desc">📲 Conectar Celular con QR</small>
+                    </div>
+                </div>
+                <div class="user-profile">
+                    <div class="avatar"><i class="fa-solid fa-user-gear"></i></div>
+                    <div class="user-info">
+                        <strong>ServTec Central</strong>
+                        <small id="user-role-label">Administrador</small>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Navbar -->
+            <header class="top-navbar">
+                <div class="nav-left">
+                    <button class="mobile-toggle" id="menu-toggle"><i class="fa-solid fa-bars"></i></button>
+                    <div class="search-bar">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="global-search" placeholder="Búsqueda rápida (#1001, cliente, teléfono, modelo)...">
+                        <span class="search-shortcut">Ctrl + K</span>
+                    </div>
+                </div>
+
+                <div class="nav-right">
+                    <!-- ELEGANT QR CONNECT BUTTON -->
+                    <button class="btn btn-secondary btn-sm" onclick="openQrConnectModal()" title="Escanear Código QR con Celular">
+                        <i class="fa-solid fa-qrcode text-purple"></i>
+                        <span>Conectar Celular</span>
+                    </button>
+
+                    <!-- WhatsApp Direct Alert Button for Owner -->
+                    <button class="btn btn-success btn-sm" id="btn-wa-stock-alert" onclick="sendLowStockWhatsApp()" title="Enviar reporte de stock bajo a mi WhatsApp">
+                        <i class="fa-brands fa-whatsapp"></i>
+                        <span>Alerta Stock WA</span>
+                    </button>
+
+                    <button class="btn btn-primary btn-sm" id="btn-quick-new-order" onclick="openNewOrderModal()">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>+ Nueva Orden</span>
+                    </button>
+
+                    <div class="notifications-dropdown-container">
+                        <button class="btn-icon notifications-btn" id="btn-notifications" onclick="toggleNotificationsMenu()">
+                            <i class="fa-solid fa-bell"></i>
+                            <span class="notification-dot" id="notif-dot"></span>
+                        </button>
+                        <div class="notifications-menu" id="notifications-menu">
+                            <div class="notif-header flex-between">
+                                <div>
+                                    <h3>Alertas de Stock (&le; 2 uds)</h3>
+                                    <small id="notif-count-text">0 alertas activas</small>
+                                </div>
+                                <button class="btn btn-sm btn-success" onclick="sendLowStockWhatsApp()"><i class="fa-brands fa-whatsapp"></i> WA</button>
+                            </div>
+                            <div class="notif-list" id="notif-list">
+                                <!-- Dynamic notifications -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="current-date-badge">
+                        <i class="fa-regular fa-clock"></i>
+                        <span id="current-date-display">Hoy</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dynamic Tab Content Views -->
+            <div class="content-wrapper">
+                
+                <!-- VIEW 1: DASHBOARD -->
+                <section class="tab-view active" id="view-dashboard">
+                    <div class="page-title-bar">
+                        <div>
+                            <h1>Panel General ServTec</h1>
+                            <p>Resumen limpio de operaciones, estado de taller y finanzas.</p>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-secondary" onclick="openQrConnectModal()">
+                                <i class="fa-solid fa-qrcode"></i> Escanear QR Celular
+                            </button>
+                            <button class="btn btn-primary" onclick="openNewOrderModal()">
+                                <i class="fa-solid fa-plus"></i> Nueva Orden Exprés
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Alert Banner for Low Stock -->
+                    <div class="stock-alert-banner hidden" id="dashboard-stock-banner">
+                        <div class="banner-content">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <div>
+                                <strong>Alerta de Repuestos Críticos (&le; 2 unidades)</strong>
+                                <p id="stock-banner-text">Se requiere reposición urgente de componentes.</p>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-success btn-sm" onclick="sendLowStockWhatsApp()">
+                                <i class="fa-brands fa-whatsapp"></i> Enviar Alerta a mi WA
+                            </button>
+                            <button class="btn btn-dark btn-sm" onclick="switchTab('inventory')">
+                                Ver Inventario <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stat Cards Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon icon-blue"><i class="fa-solid fa-mobile-screen"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-label">Equipos en Taller</span>
+                                <h2 class="stat-value" id="stat-active-orders">0</h2>
+                                <span class="stat-subtext text-muted">En proceso activo</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon icon-green"><i class="fa-solid fa-circle-check"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-label">Listos para Retiro</span>
+                                <h2 class="stat-value" id="stat-ready-orders">0</h2>
+                                <span class="stat-subtext text-green">Esperando al cliente</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon icon-red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-label">Stock Crítico (&le; 2)</span>
+                                <h2 class="stat-value" id="stat-critical-stock">0</h2>
+                                <span class="stat-subtext text-danger">Piezas por agotar</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card border-purple">
+                            <div class="stat-icon icon-purple"><i class="fa-solid fa-vault"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-label">Ganancia Neta Real</span>
+                                <h2 class="stat-value text-purple" id="stat-monthly-profit">$0.00</h2>
+                                <span class="stat-subtext text-purple">Cobrado - Costo repuestos</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Orders Table -->
+                    <div class="card mt-4">
+                        <div class="card-header flex-between">
+                            <h3><i class="fa-solid fa-list-check"></i> Reparaciones Activas Recientes</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="switchTab('orders')">Ver Tablero Kanban <i class="fa-solid fa-arrow-right"></i></button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Cliente / Contacto</th>
+                                        <th>Equipo & Modelo</th>
+                                        <th>Falla / Servicio</th>
+                                        <th>Estado</th>
+                                        <th>Total / Abono</th>
+                                        <th>Acciones Rápidas</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-orders-tbody">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 2: ÓRDENES DE SERVICIO (KANBAN & TABLA) -->
+                <section class="tab-view" id="view-orders">
+                    <div class="page-title-bar">
+                        <div>
+                            <h1>Gestión de Órdenes de Servicio</h1>
+                            <p>Flujo de reparaciones sincronizado en tiempo real.</p>
+                        </div>
+                        <div class="action-buttons">
+                            <div class="view-switcher">
+                                <button class="btn-toggle active" id="btn-view-kanban" onclick="setOrdersViewMode('kanban')">
+                                    <i class="fa-solid fa-table-columns"></i> Kanban
+                                </button>
+                                <button class="btn-toggle" id="btn-view-table" onclick="setOrdersViewMode('table')">
+                                    <i class="fa-solid fa-list"></i> Lista
+                                </button>
+                            </div>
+                            <button class="btn btn-primary" onclick="openNewOrderModal()">
+                                <i class="fa-solid fa-plus"></i> Nueva Orden
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filter Bar -->
+                    <div class="filter-card mb-4">
+                        <div class="filter-row">
+                            <div class="filter-group flex-1">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="order-search-input" placeholder="Buscar por Nombre, #1001, Teléfono, Modelo..." oninput="renderOrders()">
+                            </div>
+                            <div class="filter-group">
+                                <select id="order-status-filter" onchange="renderOrders()" class="form-control">
+                                    <option value="all">Todos los Estados</option>
+                                    <option value="ingresado">Recibido / Ingresado</option>
+                                    <option value="diagnostico">En Diagnóstico</option>
+                                    <option value="esperando_repuesto">Esperando Repuesto</option>
+                                    <option value="en_reparacion">En Reparación</option>
+                                    <option value="listo">Listo para Entrega</option>
+                                    <option value="entregado">Entregado & Pagado</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kanban Board View Container -->
+                    <div id="kanban-view-container" class="kanban-board">
+                        <div class="kanban-column" data-status="ingresado">
+                            <div class="column-header header-ingresado">
+                                <span class="col-title"><i class="fa-solid fa-inbox"></i> Recibidos</span>
+                                <span class="col-count" id="count-ingresado">0</span>
+                            </div>
+                            <div class="kanban-cards" id="cards-ingresado"></div>
+                        </div>
+
+                        <div class="kanban-column" data-status="diagnostico">
+                            <div class="column-header header-diagnostico">
+                                <span class="col-title"><i class="fa-solid fa-stethoscope"></i> Diagnóstico</span>
+                                <span class="col-count" id="count-diagnostico">0</span>
+                            </div>
+                            <div class="kanban-cards" id="cards-diagnostico"></div>
+                        </div>
+
+                        <div class="kanban-column" data-status="esperando_repuesto">
+                            <div class="column-header header-esperando">
+                                <span class="col-title"><i class="fa-solid fa-clock"></i> Esperando Repuesto</span>
+                                <span class="col-count" id="count-esperando_repuesto">0</span>
+                            </div>
+                            <div class="kanban-cards" id="cards-esperando_repuesto"></div>
+                        </div>
+
+                        <div class="kanban-column" data-status="en_reparacion">
+                            <div class="column-header header-reparacion">
+                                <span class="col-title"><i class="fa-solid fa-screwdriver-wrench"></i> En Reparación</span>
+                                <span class="col-count" id="count-en_reparacion">0</span>
+                            </div>
+                            <div class="kanban-cards" id="cards-en_reparacion"></div>
+                        </div>
+
+                        <div class="kanban-column" data-status="listo">
+                            <div class="column-header header-listo">
+                                <span class="col-title"><i class="fa-solid fa-circle-check"></i> Listo p/ Retiro</span>
+                                <span class="col-count" id="count-listo">0</span>
+                            </div>
+                            <div class="kanban-cards" id="cards-listo"></div>
+                        </div>
+
+                        <div class="kanban-column" data-status="entregado">
+                            <div class="column-header header-entregado">
+                                <span class="col-title"><i class="fa-solid fa-hand-holding-dollar"></i> Entregado & Pagado</span>
+                                <span class="col-count" id="count-entregado">0</span>
+                            </div>
+                            <div class="kanban-cards" id="cards-entregado"></div>
+                        </div>
+                    </div>
+
+                    <!-- Table View Container -->
+                    <div id="table-view-container" class="card hidden">
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Fecha In.</th>
+                                        <th>Cliente / Contacto</th>
+                                        <th>Dispositivo & Modelo</th>
+                                        <th>Falla Declarada</th>
+                                        <th>Estado</th>
+                                        <th>Total / Abono</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="all-orders-table-body">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 3: INVENTARIO & ALERTAS -->
+                <section class="tab-view" id="view-inventory">
+                    <div class="page-title-bar">
+                        <div>
+                            <h1>Inventario & Productos (Existentes y Nuevos)</h1>
+                            <p>Gestión limpia de componentes, accesorios y artículos especiales no existentes.</p>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-primary btn-lg" onclick="openNewInventoryModal()">
+                                <i class="fa-solid fa-circle-plus"></i> + AGREGAR NUEVO PRODUCTO
+                            </button>
+                            <button class="btn btn-success btn-sm" onclick="sendLowStockWhatsApp()">
+                                <i class="fa-brands fa-whatsapp"></i> Alerta Stock WA
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="exportPurchaseList()">
+                                <i class="fa-solid fa-file-export"></i> Descargar Pedido
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Critical Alert Summary Box -->
+                    <div class="inventory-alerts-panel" id="inventory-alerts-panel">
+                        <div class="alert-panel-header">
+                            <h3><i class="fa-solid fa-triangle-exclamation"></i> Repuestos con Alerta de Reposición (&le; 2 Piezas)</h3>
+                            <div class="action-buttons">
+                                <button class="btn btn-sm btn-success" onclick="sendLowStockWhatsApp()"><i class="fa-brands fa-whatsapp"></i> Enviar Alerta a mi WA</button>
+                                <span class="badge badge-danger" id="critical-items-badge-count">0 Ítems Críticos</span>
+                            </div>
+                        </div>
+                        <div class="alert-items-grid" id="alert-items-grid">
+                            <!-- Dynamic low stock cards -->
+                        </div>
+                    </div>
+
+                    <!-- Inventory Table -->
+                    <div class="card mt-4">
+                        <div class="card-header flex-between">
+                            <div class="tabs-subnav">
+                                <button class="subtab-btn active" onclick="filterInventoryCategory('all', this)">Todos los Ítems</button>
+                                <button class="subtab-btn" onclick="filterInventoryCategory('repuestos', this)">Repuestos (Pantallas/Baterías)</button>
+                                <button class="subtab-btn" onclick="filterInventoryCategory('accesorios', this)">Micas & Accesorios</button>
+                                <button class="subtab-btn text-danger" onclick="filterInventoryCategory('low_stock', this)">Stock Bajo (&le; 2)</button>
+                            </div>
+                            <div class="action-buttons">
+                                <div class="search-input-sm">
+                                    <input type="text" id="inventory-search-input" placeholder="Buscar en inventario..." oninput="renderInventory()">
+                                </div>
+                                <button class="btn btn-primary btn-sm" onclick="openNewInventoryModal()">
+                                    <i class="fa-solid fa-plus"></i> + Agregar Producto
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th>Nombre del Producto / Repuesto</th>
+                                        <th>Tipo / Categoría</th>
+                                        <th>Costo ($)</th>
+                                        <th>Precio Venta ($)</th>
+                                        <th>Stock Actual</th>
+                                        <th>Stock Mín.</th>
+                                        <th>Estado</th>
+                                        <th>Acciones Rápidas</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-table-body">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 4: POS - VENTA RÁPIDA (MICAS Y ACCESORIOS) -->
+                <section class="tab-view" id="view-pos">
+                    <div class="page-title-bar">
+                        <div>
+                            <h1>Venta Rápida en Caja (POS)</h1>
+                            <p>Facturación sin fricción de Micas, Cargadores y Accesorios al mostrador.</p>
+                        </div>
+                    </div>
+
+                    <div class="pos-container">
+                        <!-- Left Column: Products Grid -->
+                        <div class="pos-products-side">
+                            <div class="pos-category-bar">
+                                <button class="category-btn active" onclick="filterPosProducts('all', this)">Todos</button>
+                                <button class="category-btn" onclick="filterPosProducts('micas', this)">Micas Hidrogel/Vidrio</button>
+                                <button class="category-btn" onclick="filterPosProducts('fundas', this)">Fundas</button>
+                                <button class="category-btn" onclick="filterPosProducts('cargadores', this)">Cargadores</button>
+                                <button class="category-btn" onclick="filterPosProducts('varios', this)">Otros</button>
+                            </div>
+
+                            <div class="pos-search-bar">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="pos-search-input" placeholder="Buscar producto o mica..." oninput="renderPosGrid()">
+                            </div>
+
+                            <div class="pos-products-grid" id="pos-products-grid">
+                                <!-- Dynamic pos product cards -->
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Cart & Checkout -->
+                        <div class="pos-cart-side">
+                            <div class="cart-card">
+                                <div class="cart-header">
+                                    <h3><i class="fa-solid fa-basket-shopping"></i> Venta Directa</h3>
+                                    <button class="btn btn-sm btn-link text-danger" onclick="clearPosCart()"><i class="fa-solid fa-trash-can"></i> Vaciar</button>
+                                </div>
+
+                                <div class="cart-items-list" id="cart-items-list">
+                                    <!-- Dynamic cart items -->
+                                </div>
+
+                                <div class="cart-summary">
+                                    <div class="summary-line">
+                                        <span>Subtotal:</span>
+                                        <strong id="cart-subtotal">$0.00</strong>
+                                    </div>
+                                    <div class="summary-line total-line">
+                                        <span>TOTAL A COBRAR:</span>
+                                        <strong id="cart-total">$0.00</strong>
+                                    </div>
+
+                                    <div class="form-group mb-3">
+                                        <label>Método de Pago:</label>
+                                        <select id="pos-payment-method" class="form-control">
+                                            <option value="Efectivo">Efectivo</option>
+                                            <option value="Transferencia">Transferencia / Yape / Plin</option>
+                                            <option value="Tarjeta">Tarjeta de Débito / Crédito</option>
+                                        </select>
+                                    </div>
+
+                                    <button class="btn btn-success btn-block btn-lg" onclick="processPosCheckout()">
+                                        <i class="fa-solid fa-check"></i> PROCESAR COBRO Y DESCONTAR STOCK
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 5: FINANZAS & CAJA -->
+                <section class="tab-view" id="view-finances">
+                    <div class="page-title-bar">
+                        <div>
+                            <h1>Finanzas & Ganancia Neta Real</h1>
+                            <p>Contabilidad precisa restando automáticamente el costo del repuesto usado.</p>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-secondary" onclick="openExpenseModal()">
+                                <i class="fa-solid fa-minus-circle"></i> Registrar Gasto del Local
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Financial Summary Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon icon-green"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-label">Ingreso Bruto</span>
+                                <h2 class="stat-value" id="fin-total-revenue">$0.00</h2>
+                                <span class="stat-subtext text-green">Servicios + POS</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon icon-amber"><i class="fa-solid fa-box"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-label">Costo Repuestos Usados</span>
+                                <h2 class="stat-value" id="fin-total-costs">$0.00</h2>
+                                <span class="stat-subtext text-muted">Costo insumos</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon icon-red"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-label">Gastos Operativos</span>
+                                <h2 class="stat-value" id="fin-total-expenses">$0.00</h2>
+                                <span class="stat-subtext text-danger">Gastos de local</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card border-purple">
+                            <div class="stat-icon icon-purple"><i class="fa-solid fa-vault"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-label">GANANCIA NETA LIMPIA</span>
+                                <h2 class="stat-value text-purple" id="fin-net-profit">$0.00</h2>
+                                <span class="stat-subtext text-purple">Ganancia Real</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Income & Expense Ledger Table -->
+                    <div class="card mt-4">
+                        <div class="card-header flex-between">
+                            <h3><i class="fa-solid fa-book-bookmark"></i> Movimientos de Caja y Transacciones</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha & Hora</th>
+                                        <th>Tipo</th>
+                                        <th>Concepto / Referencia</th>
+                                        <th>Método Pago</th>
+                                        <th>Ingreso (+USD)</th>
+                                        <th>Costo Insumo (-USD)</th>
+                                        <th>Ganancia Neta</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="finances-table-body">
+                                    <!-- Dynamic ledger rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL 1: NUEVA / EDITAR ORDEN DE SERVICIO -->
+    <div class="modal-backdrop" id="modal-order">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-order-title"><i class="fa-solid fa-mobile-screen"></i> Registrar Orden de Servicio</h3>
+                    <button class="modal-close" onclick="closeModal('modal-order')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-order" onsubmit="saveOrder(event)">
+                        <input type="hidden" id="order-id">
+                        
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label>Cliente *</label>
+                                <input type="text" id="order-client-name" class="form-control" placeholder="Nombre completo" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Teléfono / WhatsApp *</label>
+                                <input type="text" id="order-client-phone" class="form-control" placeholder="+51 987654321" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label>Equipo / Modelo *</label>
+                                <input type="text" id="order-device-model" class="form-control" placeholder="ej. Samsung A54 5G" required>
+                            </div>
+                            <div class="form-group">
+                                <label>IMEI / Serie (Opcional)</label>
+                                <input type="text" id="order-device-imei" class="form-control" placeholder="Opcional">
+                            </div>
+                            <div class="form-group">
+                                <label>Clave PIN / Patrón</label>
+                                <input type="text" id="order-device-pass" class="form-control" placeholder="ej. 1234">
+                            </div>
+                        </div>
+
+                        <!-- Checklist táctil de recepción -->
+                        <div class="checklist-box mb-3">
+                            <label class="checklist-title">Checklist Inicial de Estado:</label>
+                            <div class="checklist-grid">
+                                <label class="check-item"><input type="checkbox" id="chk-prende" checked> Prende</label>
+                                <label class="check-item"><input type="checkbox" id="chk-tactil" checked> Táctil responde</label>
+                                <label class="check-item"><input type="checkbox" id="chk-camaras" checked> Cámaras OK</label>
+                                <label class="check-item"><input type="checkbox" id="chk-audio" checked> Audio/Mic</label>
+                                <label class="check-item"><input type="checkbox" id="chk-carga" checked> Carga OK</label>
+                                <label class="check-item"><input type="checkbox" id="chk-sim" checked> Con Chip/SIM</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Falla Reportada / Diagnóstico *</label>
+                            <textarea id="order-fault-description" class="form-control" rows="2" placeholder="Describa la falla del equipo..." required></textarea>
+                        </div>
+
+                        <!-- PRODUCT SELECTION (EXISTING OR NON-EXISTING ON THE FLY) -->
+                        <div class="part-selection-box mb-3">
+                            <label class="section-sublabel"><i class="fa-solid fa-cubes"></i> Asignación de Repuesto / Producto:</label>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label>Tipo de Repuesto</label>
+                                    <select id="order-part-source-type" class="form-control" onchange="togglePartSourceType(this.value)">
+                                        <option value="existing">📦 Repuesto Existente en Inventario</option>
+                                        <option value="custom">✨ Repuesto Especial / Externo / No Existente</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="group-part-existing">
+                                    <label>Seleccionar del Inventario</label>
+                                    <select id="order-part-select" class="form-control" onchange="autoCalculateOrderCosts()">
+                                        <option value="">-- Sin repuesto asignado --</option>
+                                    </select>
+                                </div>
+                                <div class="form-group hidden" id="group-part-custom">
+                                    <label>Nombre del Repuesto Externo</label>
+                                    <input type="text" id="order-part-custom-name" class="form-control" placeholder="ej. Flex de Carga Xiaomi Especial">
+                                </div>
+                            </div>
+
+                            <div class="form-row-2 hidden" id="group-part-custom-cost">
+                                <div class="form-group">
+                                    <label>Costo Estimado del Repuesto Externo ($)</label>
+                                    <input type="number" step="0.01" id="order-part-custom-cost-val" class="form-control" placeholder="10.00" value="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <small class="text-muted mt-4 d-block">Este costo se restará de la ganancia neta cuando el cliente pague la orden.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label>Precio Total Presupuestado ($ USD) *</label>
+                                <input type="number" step="0.01" id="order-cost-total" class="form-control" placeholder="0.00" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Adelanto / Abono ($ USD)</label>
+                                <input type="number" step="0.01" id="order-cost-advance" class="form-control" value="0.00">
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('modal-order')">Cancelar</button>
+                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar Orden</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: DETALLE Y RECIBO DIGITAL -->
+    <div class="modal-backdrop" id="modal-view-order">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Orden de Servicio <span id="view-order-code-badge" class="badge badge-primary">#ORD-1001</span></h3>
+                    <button class="modal-close" onclick="closeModal('modal-view-order')">&times;</button>
+                </div>
+                <div class="modal-body" id="printable-order-receipt">
+                    <!-- Dynamic Printable Receipt Content -->
+                </div>
+                <div class="modal-footer flex-between">
+                    <button class="btn btn-success" onclick="sendOrderWhatsApp()"><i class="fa-brands fa-whatsapp"></i> Enviar a WhatsApp</button>
+                    <div>
+                        <button class="btn btn-secondary" onclick="printReceipt()"><i class="fa-solid fa-print"></i> Imprimir</button>
+                        <button class="btn btn-dark" onclick="closeModal('modal-view-order')">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: AGREGAR / EDITAR PRODUCTO EN INVENTARIO -->
+    <div class="modal-backdrop" id="modal-inventory">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fa-solid fa-box-archive"></i> Registrar Producto o Repuesto</h3>
+                    <button class="modal-close" onclick="closeModal('modal-inventory')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-inventory" onsubmit="saveInventoryItem(event)">
+                        <input type="hidden" id="inv-id">
+
+                        <div class="form-group">
+                            <label>Nombre del Producto / Repuesto *</label>
+                            <input type="text" id="inv-name" class="form-control" placeholder="ej. Pantalla Samsung A54 OLED" required>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label>Categoría *</label>
+                                <select id="inv-category" class="form-control" required>
+                                    <option value="repuestos">Repuesto para Taller (Pantallas, Baterías, Pines)</option>
+                                    <option value="accesorios">Mica de Vidrio / Hidrogel (Venta POS)</option>
+                                    <option value="fundas">Funda / Estuche (Venta POS)</option>
+                                    <option value="cargadores">Cargador / Cable (Venta POS)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>SKU / Código Referencia</label>
+                                <input type="text" id="inv-sku" class="form-control" placeholder="REP-001">
+                            </div>
+                        </div>
+
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label>Precio Costo ($) *</label>
+                                <input type="number" step="0.01" id="inv-price-cost" class="form-control" placeholder="10.00" value="10.00" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Precio Venta ($) *</label>
+                                <input type="number" step="0.01" id="inv-price-sale" class="form-control" placeholder="25.00" value="25.00" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Stock Inicial *</label>
+                                <input type="number" id="inv-stock" class="form-control" value="5" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Alerta de Stock Mínimo (&le;)</label>
+                            <input type="number" id="inv-min-stock" class="form-control" value="2" required>
+                            <small class="text-muted">Si el stock llega a este número o menos, se generará la alerta de reposición.</small>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('modal-inventory')">Cancelar</button>
+                            <button type="button" class="btn btn-primary" onclick="saveInventoryItem(event)">
+                                <i class="fa-solid fa-floppy-disk"></i> Guardar Producto
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: ESCANEAR QR PARA CONECTAR CELULAR CON CONFIGURADOR DE IP / HOST -->
+    <div class="modal-backdrop" id="modal-qr-connect">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fa-solid fa-qrcode text-purple"></i> Conectar iPhone / Celular con QR</h3>
+                    <button class="modal-close" onclick="closeModal('modal-qr-connect')">&times;</button>
+                </div>
+                <div class="modal-body text-center" style="padding:24px;">
+                    <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:14px;">
+                        Escanea el código QR desde tu iPhone o Android. Si estás probando en red Wi-Fi local, ingresa la IP de tu computadora a continuación.
+                    </p>
+
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:8px; margin-bottom:14px; text-align:left;">
+                        <label style="font-size:0.75rem; font-weight:700; color:var(--text-main); display:block; margin-bottom:4px;">
+                            IP / Dirección Wi-Fi de tu computadora (ej. 192.168.1.15):
+                        </label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" id="manual-ip-input" class="form-control" placeholder="192.168.1.15" oninput="updateQrWithManualIp(this.value)">
+                            <button class="btn btn-primary btn-sm" onclick="saveManualIp()"><i class="fa-solid fa-check"></i> Generar</button>
+                        </div>
+                        <small class="text-muted" style="font-size:0.7rem; display:block; margin-top:4px;">
+                            📌 Para ver la IP de tu PC: Presiona <code>Win + R</code> &rarr; escribe <code>cmd</code> &rarr; escribe <code>ipconfig</code> (Dirección IPv4).
+                        </small>
+                    </div>
+
+                    <div style="background:#ffffff; padding:16px; border-radius:12px; display:inline-block; border:1px solid #e2e8f0; box-shadow:var(--shadow-md); margin-bottom:14px;">
+                        <img id="qr-code-img" src="" alt="Código QR ServTec" style="width:200px; height:200px; display:block;">
+                    </div>
+
+                    <div style="background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; font-size:0.82rem; margin-bottom:12px;">
+                        <span class="text-muted">Enlace escaneado por el iPhone:</span><br>
+                        <strong id="qr-url-text" class="text-purple" style="font-size:0.92rem; word-break:break-all;">http://localhost:8080</strong>
+                    </div>
+
+                    <button class="btn btn-secondary btn-sm" onclick="copyQrUrl()">
+                        <i class="fa-regular fa-copy"></i> Copiar Enlace
+                    </button>
+                </div>
+                <div class="modal-footer flex-center">
+                    <button class="btn btn-primary" onclick="closeModal('modal-qr-connect')">Entendido</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: REGISTRAR GASTO -->
+    <div class="modal-backdrop" id="modal-expense">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Registrar Gasto de Operación</h3>
+                    <button class="modal-close" onclick="closeModal('modal-expense')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-expense" onsubmit="saveExpense(event)">
+                        <div class="form-group">
+                            <label>Concepto *</label>
+                            <input type="text" id="expense-concept" class="form-control" placeholder="ej. Pago de Alquiler o Insumos de Limpieza" required>
+                        </div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label>Monto ($)</label>
+                                <input type="number" step="0.01" id="expense-amount" class="form-control" placeholder="15.00" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Método de Pago</label>
+                                <select id="expense-method" class="form-control">
+                                    <option value="Efectivo">Efectivo de Caja</option>
+                                    <option value="Transferencia">Transferencia</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('modal-expense')">Cancelar</button>
+                            <button type="submit" class="btn btn-danger">Registrar Gasto</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
