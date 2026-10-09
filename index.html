@@ -885,6 +885,37 @@
     <!-- Toast Notifications -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="app.js"></script>
+    <!-- Floating WhatsApp Action Button for Mobile -->
+    <button class="mobile-floating-wa" onclick="sendLowStockWhatsApp()" title="Enviar Alerta Stock WhatsApp">
+        <i class="fa-brands fa-whatsapp"></i>
+    </button>
+
+    <!-- Native Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+        <button class="mobile-nav-btn active" data-tab="dashboard" onclick="switchTab('dashboard')">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>Inicio</span>
+        </button>
+        <button class="mobile-nav-btn" data-tab="orders" onclick="switchTab('orders')">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Órdenes</span>
+            <span class="mobile-badge" id="mobile-badge-orders">0</span>
+        </button>
+        <button class="mobile-nav-btn" data-tab="inventory" onclick="switchTab('inventory')">
+            <i class="fa-solid fa-boxes-packing"></i>
+            <span>Stock</span>
+            <span class="mobile-badge warning" id="mobile-badge-stock">0</span>
+        </button>
+        <button class="mobile-nav-btn" data-tab="pos" onclick="switchTab('pos')">
+            <i class="fa-solid fa-cash-register"></i>
+            <span>POS</span>
+        </button>
+        <button class="mobile-nav-btn" data-tab="finances" onclick="switchTab('finances')">
+            <i class="fa-solid fa-wallet"></i>
+            <span>Finanzas</span>
+        </button>
+    </nav>
+
+    <script src="app.js?v=3.0"></script>
 </body>
 </html>

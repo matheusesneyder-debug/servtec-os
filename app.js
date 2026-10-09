@@ -279,12 +279,15 @@ function switchTab(tabId) {
     state.currentTab = tabId;
     document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active'));
     document.querySelectorAll('.sidebar-nav .nav-item').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => btn.classList.remove('active'));
 
     const targetView = document.getElementById(`view-${tabId}`);
     const targetNav = document.querySelector(`.sidebar-nav .nav-item[data-tab="${tabId}"]`);
+    const targetMobileNav = document.querySelector(`.mobile-nav-btn[data-tab="${tabId}"]`);
 
     if (targetView) targetView.classList.add('active');
     if (targetNav) targetNav.classList.add('active');
+    if (targetMobileNav) targetMobileNav.classList.add('active');
 
     if (tabId === 'dashboard') renderDashboard();
     if (tabId === 'orders') renderOrders();
@@ -339,8 +342,17 @@ function checkInventoryAlerts() {
 
 function updateBadges() {
     const activeOrders = state.orders.filter(o => o.status !== 'entregado').length;
+    const criticalStock = state.inventory.filter(item => Number(item.stock) <= Number(item.minStock)).length;
+
     const badgeOrders = document.getElementById('badge-total-orders');
+    const badgeLowStock = document.getElementById('badge-low-stock');
+    const mobileBadgeOrders = document.getElementById('mobile-badge-orders');
+    const mobileBadgeStock = document.getElementById('mobile-badge-stock');
+
     if (badgeOrders) badgeOrders.textContent = activeOrders;
+    if (badgeLowStock) badgeLowStock.textContent = criticalStock;
+    if (mobileBadgeOrders) mobileBadgeOrders.textContent = activeOrders;
+    if (mobileBadgeStock) mobileBadgeStock.textContent = criticalStock;
 }
 
 // --------------------------------------------------------------------------
