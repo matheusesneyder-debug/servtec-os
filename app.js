@@ -219,15 +219,18 @@ function changeTerminalRole(role) {
 function toggleMobileSidebar(forceState) {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
+    const appContainer = document.getElementById('app-container');
     if (!sidebar) return;
 
     const shouldOpen = forceState !== undefined ? forceState : !sidebar.classList.contains('open');
     if (shouldOpen) {
         sidebar.classList.add('open');
         overlay?.classList.add('active');
+        appContainer?.classList.remove('sidebar-collapsed');
     } else {
         sidebar.classList.remove('open');
         overlay?.classList.remove('active');
+        appContainer?.classList.add('sidebar-collapsed');
     }
 }
 
@@ -241,7 +244,7 @@ function initEventListeners() {
         btn.addEventListener('click', () => {
             const tabName = btn.getAttribute('data-tab');
             switchTab(tabName);
-            if (window.innerWidth <= 768) {
+            if (window.innerWidth <= 1024) {
                 toggleMobileSidebar(false);
             }
         });

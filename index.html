@@ -12,10 +12,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2.0">
 </head>
 <body>
-    <div class="app-container">
+    <div class="app-container" id="app-container">
         <!-- Sidebar Backdrop for Mobile -->
         <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar(false)"></div>
         <!-- Sidebar Navigation -->
@@ -28,6 +28,9 @@
                     <h2>ServTec<span>OS</span></h2>
                     <span class="version-tag">Servicio Técnico Profesional</span>
                 </div>
+                <button class="sidebar-close-btn" id="sidebar-close-btn" onclick="toggleMobileSidebar(false)" title="Cerrar Menú">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
 
             <!-- Terminal Role Selector in Sidebar -->
