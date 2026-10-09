@@ -74,6 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAllViews();
 });
 
+const CLOUD_SYNC_TOPIC = 'servtec_os_cloud_sync_v1';
+let isCloudSyncing = false;
+
 // Storage Engine
 function loadDatabase() {
     const localInv = localStorage.getItem('servtec_inventory');
@@ -97,16 +100,34 @@ function saveDatabase(broadcast = true) {
 
     if (broadcast) {
         syncChannel.postMessage({ type: 'sync_update', timestamp: Date.now() });
+        pushStateToCloud();
     }
 }
 
-// Multi-Device Realtime Sync Setup
+function pushStateToCloud() {
+    if (isCloudSyncing) return;
+    isCloudSyncing = true;
+
+    const payload = {
+        inventory: state.inventory,
+        orders: state.orders,
+        finances: state.finances,
+        timestamp: Date.now()
+    };
+
+    fetch(`https://ntfy.sh/${CLOUD_SYNC_TOPIC}`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    }).catch(err => console.log('Cloud sync push error:', err))
+      .finally(() => { isCloudSyncing = false; });
+}
+
+// Multi-Device Realtime Cloud Sync Setup
 function initMultiDeviceSync() {
     syncChannel.onmessage = (event) => {
         if (event.data && event.data.type === 'sync_update') {
             loadDatabase();
             renderAllViews();
-            showToast('🔄 Sincronizado en tiempo real.', 'info');
         }
     };
 
@@ -116,6 +137,65 @@ function initMultiDeviceSync() {
             renderAllViews();
         }
     });
+
+    // Fetch latest cloud state on startup
+    fetch(`https://ntfy.sh/${CLOUD_SYNC_TOPIC}/json?poll=1`)
+        .then(res => res.text())
+        .then(text => {
+            if (!text) return;
+            const lines = text.trim().split('\n');
+            const lastLine = lines[lines.length - 1];
+            if (lastLine) {
+                const msg = JSON.parse(lastLine);
+                if (msg.message) {
+                    applyCloudPayload(msg.message);
+                }
+            }
+        })
+        .catch(err => console.log('Initial cloud sync error:', err));
+
+    // Realtime Server-Sent Events (SSE) listener for PC <-> iPhone instant sync
+    try {
+        const eventSource = new EventSource(`https://ntfy.sh/${CLOUD_SYNC_TOPIC}/sse`);
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data && data.message) {
+                    applyCloudPayload(data.message);
+                }
+            } catch (e) {}
+        };
+    } catch (e) {}
+}
+
+function applyCloudPayload(jsonString) {
+    try {
+        const data = JSON.parse(jsonString);
+        if (data && (data.orders || data.inventory)) {
+            let changed = false;
+
+            if (data.orders && JSON.stringify(data.orders) !== JSON.stringify(state.orders)) {
+                state.orders = data.orders;
+                localStorage.setItem('servtec_orders', JSON.stringify(state.orders));
+                changed = true;
+            }
+            if (data.inventory && JSON.stringify(data.inventory) !== JSON.stringify(state.inventory)) {
+                state.inventory = data.inventory;
+                localStorage.setItem('servtec_inventory', JSON.stringify(state.inventory));
+                changed = true;
+            }
+            if (data.finances && JSON.stringify(data.finances) !== JSON.stringify(state.finances)) {
+                state.finances = data.finances;
+                localStorage.setItem('servtec_finances', JSON.stringify(state.finances));
+                changed = true;
+            }
+
+            if (changed) {
+                renderAllViews();
+                showToast('⚡ Sincronizado en tiempo real desde la Nube', 'info');
+            }
+        }
+    } catch (e) {}
 }
 
 // QR Connect Modal (Cloud Ready & Instant iPhone Compatible)
