@@ -200,10 +200,34 @@ function applyCloudPayload(jsonString) {
 
 // QR Connect Modal (Cloud Ready & Instant iPhone Compatible)
 function openQrConnectModal() {
-    // Uses full cloud or current URL automatically
-    const cloudUrl = window.location.origin + window.location.pathname;
+    let cloudUrl = 'https://servtec-os.vercel.app';
+    if (window.location.hostname.includes('vercel.app')) {
+        cloudUrl = window.location.origin + window.location.pathname;
+    }
+
+    const manualInput = document.getElementById('manual-ip-input');
+    if (manualInput) {
+        manualInput.value = '';
+    }
+
     updateQrView(cloudUrl);
     openModal('modal-qr-connect');
+}
+
+function updateQrWithManualIp(ipVal) {
+    let cleanIp = ipVal.trim();
+    if (!cleanIp) {
+        let cloudUrl = 'https://servtec-os.vercel.app';
+        if (window.location.hostname.includes('vercel.app')) {
+            cloudUrl = window.location.origin + window.location.pathname;
+        }
+        updateQrView(cloudUrl);
+        return;
+    }
+    if (!cleanIp.startsWith('http://') && !cleanIp.startsWith('https://')) {
+        cleanIp = `http://${cleanIp}:8080`;
+    }
+    updateQrView(cleanIp);
 }
 
 function updateQrView(url) {
