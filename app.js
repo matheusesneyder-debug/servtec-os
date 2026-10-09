@@ -216,12 +216,34 @@ function changeTerminalRole(role) {
     showToast(`Modo de Terminal cambiado a: ${role.toUpperCase()}`, 'success');
 }
 
+function toggleMobileSidebar(forceState) {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (!sidebar) return;
+
+    const shouldOpen = forceState !== undefined ? forceState : !sidebar.classList.contains('open');
+    if (shouldOpen) {
+        sidebar.classList.add('open');
+        overlay?.classList.add('active');
+    } else {
+        sidebar.classList.remove('open');
+        overlay?.classList.remove('active');
+    }
+}
+
 // Event Listeners
 function initEventListeners() {
+    document.getElementById('menu-toggle')?.addEventListener('click', () => {
+        toggleMobileSidebar();
+    });
+
     document.querySelectorAll('.sidebar-nav .nav-item').forEach(btn => {
         btn.addEventListener('click', () => {
             const tabName = btn.getAttribute('data-tab');
             switchTab(tabName);
+            if (window.innerWidth <= 768) {
+                toggleMobileSidebar(false);
+            }
         });
     });
 
